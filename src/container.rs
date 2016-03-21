@@ -7,7 +7,7 @@ pub struct Container{
 	pub min_time: Cell<i64>,
 	pub max_time: Cell<i64>,
 	pub values: Vec<Measurement>,
-	pub id: i32
+	pub id: i64
 }
 impl Container {
   pub fn add(&mut self, m: Measurement){
@@ -19,7 +19,7 @@ impl Container {
   	}
   	self.values.push(m);
   }
-  pub fn new(id: i32) -> Container{
+  pub fn new(id: i64) -> Container{
   	Container {
   		id: id,
   		min_time: Cell::new(std::i64::MAX),
