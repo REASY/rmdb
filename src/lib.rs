@@ -1,6 +1,7 @@
 pub mod measurement;
 pub mod container;
 pub mod storage;
+pub mod utils;
 
 // use std::cell::Cell;
 // use rmdb::measurement::*;
