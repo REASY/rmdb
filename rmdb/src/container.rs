@@ -1,6 +1,4 @@
 use std;
-use std::cell::Cell;
-use std::sync::RwLock;
 use measurement::*;
 
 #[derive(Debug)]
