@@ -1,0 +1,8 @@
+[package]
+name = "rmdb_bench"
+version = "0.1.0"
+authors = ["Artavazd Balayan <reasyu@gmail.com>"]
+
+[dependencies]
+time = "0.1"
+rmdb = { path = "../rmdb" }
