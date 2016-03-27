@@ -1,11 +1,13 @@
 use measurement::*;
 use container::*;
 use std::sync;
+use utils::*;
 
 pub trait Storage{
 	fn write(&self, m: Measurement);	
 	fn read_by_current_time(&self, id: u64) -> Option<Measurement>;
 	fn read_all_by_current_time(&self) -> Vec<Option<Measurement>>;
+	fn read_by_time_interval(&self, id: u64, begin: u64, end: u64) -> Option<Vec<Measurement>>;
 	fn read_all_by_time_interval(&self, begin: u64, end: u64) -> Vec<Measurement>;
 	fn read_some_by_time_interval(&self, ids: &[u64], begin: u64, end: u64);
 }
@@ -52,6 +54,24 @@ impl Storage for DummyStorage {
 			result.push(self.read_by_current_time(i));
 		}
 		return result;
+	}
+	fn read_by_time_interval(&self, id: u64, begin: u64, end: u64) -> Option<Vec<Measurement>>{
+		check_arg(self.sensors_count, id);
+		let idx = id as usize;
+		let container = self.containers[idx].read().unwrap();
+		println!("[{}, {}]. min_time: {}, max_time: {}", begin, end, container.min_time, container.max_time);
+		if begin >= container.min_time || (begin < container.min_time && end >= container.min_time) {
+			let mut result = Vec::<Measurement>::new();
+			let index = get_slice_index_which_is_greater_or_equal2(&container.values, begin).unwrap();
+			println!("Index: {}", index);
+			for i in index..container.values.len(){
+				let m = container.values[i];
+				if m.time > end{ break; }
+				result.push(m);
+			}
+			return Some(result);			
+		}
+		else { return None;}
 	}
 	fn read_all_by_time_interval(&self, begin: u64, end: u64) -> Vec<Measurement>{		
 		unimplemented!();
@@ -195,6 +215,24 @@ mod tests {
 			let m = storage.read_by_current_time(i);
 			let m_max = Measurement::new(i, NUMBER_OF_MEASUREMENTS, 1.0f64, 1, 1);
 			assert_eq!(m_max, m.unwrap());
+		}
+	}
+	#[test]
+	fn read_by_time_interval_test(){
+		const NUMBER_OF_SENSORS: u64 = 1000;
+		const NUMBER_OF_MEASUREMENTS: u64 = 10000;
+
+		let storage = write_measurements(NUMBER_OF_SENSORS, NUMBER_OF_MEASUREMENTS);
+		for i in 0..NUMBER_OF_SENSORS{
+			let result = storage.read_by_time_interval(i, 0, NUMBER_OF_MEASUREMENTS).unwrap();
+			assert_eq!(NUMBER_OF_MEASUREMENTS as usize, result.len());
+
+			let mut c = 0;
+			for j in 1..NUMBER_OF_MEASUREMENTS + 1{
+				let m = Measurement::new(i, j, 1.0f64, 1, 1);
+				assert_eq!(m, result[c]);
+				c += 1;
+			}
 		}
 	}
 }
