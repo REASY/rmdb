@@ -1,15 +1,16 @@
 use measurement::*;
 use container::*;
 use std::sync;
-use utils::*;
+use utils;
+use std::thread;
 
 pub trait Storage{
 	fn write(&self, m: Measurement);	
 	fn read_by_current_time(&self, id: u64) -> Option<Measurement>;
-	fn read_all_by_current_time(&self) -> Vec<Option<Measurement>>;
+	fn read_all_by_current_time(&self) -> Vec<Measurement>;
 	fn read_by_time_interval(&self, id: u64, begin: u64, end: u64) -> Option<Vec<Measurement>>;
 	fn read_all_by_time_interval(&self, begin: u64, end: u64) -> Vec<Measurement>;
-	fn read_some_by_time_interval(&self, ids: &[u64], begin: u64, end: u64);
+	fn read_some_by_time_interval(&self, ids: &[u64], begin: u64, end: u64)-> Vec<Measurement>;
 }
 #[derive(Debug)]
 pub struct DummyStorage  {
@@ -48,11 +49,16 @@ impl Storage for DummyStorage {
 		let container = self.containers[idx].read().unwrap();
 		return container.max_measurement.clone();
 	}
-	fn read_all_by_current_time(&self) -> Vec<Option<Measurement>>{		
-		let mut result = Vec::<Option<Measurement>>::with_capacity(self.sensors_count as usize);
+	fn read_all_by_current_time(&self) -> Vec<Measurement>{		
+		let mut result = Vec::<Measurement>::with_capacity(self.sensors_count as usize);
 		for i in 0..self.sensors_count{
-			result.push(self.read_by_current_time(i));
+			let read = self.read_by_current_time(i);
+			match read {
+			    Some(r) => result.push(r),
+			    None => {} ,
+			}
 		}
+		result.sort_by(|x, y| x.time.cmp(&y.time));
 		return result;
 	}
 	fn read_by_time_interval(&self, id: u64, begin: u64, end: u64) -> Option<Vec<Measurement>>{
@@ -62,7 +68,7 @@ impl Storage for DummyStorage {
 		println!("[{}, {}]. min_time: {}, max_time: {}", begin, end, container.min_time, container.max_time);
 		if begin >= container.min_time || (begin < container.min_time && end >= container.min_time) {
 			let mut result = Vec::<Measurement>::new();
-			let index = get_slice_index_which_is_greater_or_equal2(&container.values, begin).unwrap();
+			let index = utils::get_slice_index_which_is_greater_or_equal2(&container.values, begin).unwrap();
 			println!("Index: {}", index);
 			for i in index..container.values.len(){
 				let m = container.values[i];
@@ -73,11 +79,62 @@ impl Storage for DummyStorage {
 		}
 		else { return None;}
 	}
-	fn read_all_by_time_interval(&self, begin: u64, end: u64) -> Vec<Measurement>{		
-		unimplemented!();
+	fn read_all_by_time_interval(&self, begin: u64, end: u64) -> Vec<Measurement>{
+		// Single thread reading
+		let mut result = Vec::<Measurement>::new();
+		for id in 0..self.sensors_count{
+			let v = self.read_by_time_interval(id as u64, begin, end);
+			match v {
+				Some(mut r) => result.append(&mut r),
+				None => {} ,
+			}
+		}
+		result.sort_by(|x, y| x.time.cmp(&y.time));
+		return result;
+		/*
+		// TODO Deal with lifetime when read all in many threads
+
+		let mut cpus = utils::get_cpus_number();
+		let threads_ranges = utils::get_ranges(self.sensors_count as usize, cpus);
+		
+		let mut result = Vec::<Vec<Measurement>>::with_capacity(threads_ranges.len());
+		let mut threads = Vec::<thread::JoinHandle<()>>::new();
+		let mut index = 0;
+		for range in threads_ranges{
+			
+			let i = index;
+			let t = thread::spawn(move || {
+				let mut temp_v = Vec::<Measurement>::new();
+				for id in range.0..range.1 + 1{
+					let v = self.read_by_time_interval(id as u64, begin, end);
+					match v {
+					    Some(r) => temp_v.push_all(&r),
+					    None => {} ,
+					}
+				}
+				result[i] = temp_v;
+			});
+			threads.push(t);
+			index += 1;
+		}
+		for t in threads{
+			t.join();
+		}
+
+		return vec![];
+		*/
 	}
-	fn read_some_by_time_interval(&self, ids: &[u64], begin: u64, end: u64){
-		unimplemented!();
+	fn read_some_by_time_interval(&self, ids: &[u64], begin: u64, end: u64) -> Vec<Measurement>{
+		let mut result = Vec::<Measurement>::new();
+		for id in ids{
+			let v = self.read_by_time_interval(*id as u64, begin, end);
+			match v {
+				Some(mut r) => result.append(&mut r),
+				None => {} ,
+			}
+		}
+		result.sort_by(|x, y| x.time.cmp(&y.time));
+		return result;
 	}
 }
 

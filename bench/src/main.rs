@@ -4,13 +4,13 @@ extern crate time;
 use rmdb::storage::*;
 use rmdb::measurement::*;
 use time::*;
+use rmdb::utils::*;
 
 fn main() {
 	bench_write_one_thread_32768_sensors_32768_measurements();
 }
 fn bench_write_one_thread_32768_sensors_32768_measurements(){
 	let time_before = precise_time_ns();
-
 	const NUMBER_OF_SENSORS: u64 = 32768;
 	let storage = DummyStorage::new(NUMBER_OF_SENSORS);
 	for i in 0..NUMBER_OF_SENSORS{

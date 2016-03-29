@@ -1,5 +1,23 @@
+extern crate num_cpus;
+
 use std::fmt::Debug;
 use measurement::Measurement;
+
+pub fn get_ranges(sensors: usize, threads: usize) -> Vec<(usize, usize)>{
+	let mut threads = threads;
+	if threads > sensors{
+		threads = sensors;
+	}	
+	let mut result = Vec::<(usize, usize)>::new();
+	let range_size = sensors / threads;
+	let mut begin = 0;
+	for i in 1..threads{
+		result.push((begin, range_size * i - 1));
+		begin = range_size * i;
+	}
+	result.push((begin, sensors-1));
+	return result;
+}
 
 pub fn get_equable_ranges(sensors: u64, threads: u64) -> Vec<(u64, u64)>{
 	if threads > sensors{
@@ -70,10 +88,60 @@ pub fn get_slice_index_which_is_greater_or_equal2(values: &[Measurement], s: u64
 	if mid == len - 1 && values[mid].time < s { return None;}
 	else { return Some(mid); }	
 }
+pub fn get_cpus_number() -> usize{
+	return num_cpus::get();
+}
 #[cfg(test)]
 mod tests{
 	use super::*;
 
+	#[test]
+	fn get_ranges_test1(){
+		let ranges = get_ranges(16, 8);
+		assert_eq!(8, ranges.len());
+		assert_eq!((0, 1), ranges[0]);
+		assert_eq!((2, 3), ranges[1]);
+		assert_eq!((4, 5), ranges[2]);
+		assert_eq!((6, 7), ranges[3]);
+		assert_eq!((8, 9), ranges[4]);
+		assert_eq!((10, 11), ranges[5]);
+		assert_eq!((12, 13), ranges[6]);
+		assert_eq!((14, 15), ranges[7]);
+	}
+	#[test]
+	fn get_ranges_test2(){
+		let ranges = get_ranges(17, 8);
+		assert_eq!(8, ranges.len());
+		assert_eq!((0, 1), ranges[0]);
+		assert_eq!((2, 3), ranges[1]);
+		assert_eq!((4, 5), ranges[2]);
+		assert_eq!((6, 7), ranges[3]);
+		assert_eq!((8, 9), ranges[4]);
+		assert_eq!((10, 11), ranges[5]);
+		assert_eq!((12, 13), ranges[6]);
+		assert_eq!((14, 16), ranges[7]);
+	}
+	#[test]
+	fn get_ranges_test3(){
+		let ranges = get_ranges(8, 17);
+		assert_eq!(8, ranges.len());
+		assert_eq!((0, 0), ranges[0]);
+		assert_eq!((1, 1), ranges[1]);
+		assert_eq!((2, 2), ranges[2]);
+		assert_eq!((3, 3), ranges[3]);
+		assert_eq!((4, 4), ranges[4]);
+		assert_eq!((5, 5), ranges[5]);
+		assert_eq!((6, 6), ranges[6]);
+		assert_eq!((7, 7), ranges[7]);
+	}
+	#[test]
+	fn get_ranges_test4(){
+		let ranges = get_ranges(19, 3);
+		assert_eq!(3, ranges.len());
+		assert_eq!((0, 5), ranges[0]);
+		assert_eq!((6, 11), ranges[1]);
+		assert_eq!((12, 18), ranges[2]);
+	}
 	#[test]
 	fn get_equable_ranges_odd_sensors_odd_threads(){
 		let ranges = get_equable_ranges(33, 11);
