@@ -22,7 +22,7 @@ pub fn get_slice_index_which_is_greater_or_equal<T: Ord + Debug>(values: &[T], s
 	let len = values.len();
 	if len == 0 { return None; }
 	if len == 1{
-		if values[0] == s{ return Some(0); }
+		if values[0] >= s{ return Some(0); }
 		else { return None; }
 	}
 	let mut low = 0;
@@ -48,7 +48,7 @@ pub fn get_slice_index_which_is_greater_or_equal2(values: &[Measurement], s: u64
 	let len = values.len();
 	if len == 0 { return None; }
 	if len == 1{
-		if values[0].time == s{ return Some(0); }
+		if values[0].time >= s{ return Some(0); }
 		else { return None; }
 	}
 	let mut low = 0;
@@ -110,11 +110,12 @@ mod tests{
 	}
 	#[test]
 	fn get_slice_index_which_is_greater_or_equal_with_len_1_without_searching_element(){		
-		assert_eq!(None, get_slice_index_which_is_greater_or_equal(&[1], 0));
+		assert_eq!(None, get_slice_index_which_is_greater_or_equal(&[1], 2));
 	}
 	#[test]
 	fn get_slice_index_which_is_greater_or_equal_with_len_1_with_searching_element(){		
-		assert_eq!(Some(0), get_slice_index_which_is_greater_or_equal(&[1], 1));		
+		assert_eq!(Some(0), get_slice_index_which_is_greater_or_equal(&[1], 1));
+		assert_eq!(Some(0), get_slice_index_which_is_greater_or_equal(&[1], 0));
 	}
 	#[test]
 	fn get_slice_index_which_is_greater_or_equal_with_len_2_without_searching_element(){		
