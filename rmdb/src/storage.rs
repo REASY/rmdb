@@ -2,7 +2,6 @@ use measurement::*;
 use container::*;
 use std::sync;
 use utils;
-use std::thread;
 
 pub trait Storage{
 	fn write(&self, m: Measurement);	
@@ -36,6 +35,7 @@ pub fn check_arg(sensors_count: u64, id: u64){
 		panic!("id[{}] is out of range! sensors_count: {}", id, sensors_count);
 	}
 }
+
 impl Storage for DummyStorage {	
 	fn write(&self, m: Measurement){
 		check_arg(self.sensors_count, m.id);
@@ -47,7 +47,10 @@ impl Storage for DummyStorage {
 		check_arg(self.sensors_count, id);
 		let idx = id as usize;
 		let container = self.containers[idx].read().unwrap();
-		return container.max_measurement.clone();
+		match container.max_measurement {
+		    Some(m) => return Some(m.as_measurement(id)),
+		    None => return None,
+		}
 	}
 	fn read_all_by_current_time(&self) -> Vec<Measurement>{		
 		let mut result = Vec::<Measurement>::with_capacity(self.sensors_count as usize);
@@ -68,12 +71,12 @@ impl Storage for DummyStorage {
 		println!("[{}, {}]. min_time: {}, max_time: {}", begin, end, container.min_time, container.max_time);
 		if begin >= container.min_time || (begin < container.min_time && end >= container.min_time) {
 			let mut result = Vec::<Measurement>::new();
-			let index = utils::get_slice_index_which_is_greater_or_equal2(&container.values, begin).unwrap();
+			let index = utils::lower_bound2(&container.values, begin).unwrap();
 			println!("Index: {}", index);
 			for i in index..container.values.len(){
 				let m = container.values[i];
 				if m.time > end{ break; }
-				result.push(m);
+				result.push(m.as_measurement(id as u64));
 			}
 			return Some(result);			
 		}
@@ -147,7 +150,8 @@ mod tests {
 
 	use measurement::*;	
 	use storage::Storage;
-	use storage::DummyStorage;	
+	use storage::DummyStorage;
+	use container::InternalMeasurement;	
 	use utils::*;
 
 	fn write_measurements(sensors_count: u64, measurements: u64) -> Rc<DummyStorage>{
@@ -173,10 +177,11 @@ mod tests {
 		for i in 0..NUMBER_OF_SENSORS{
 			let idx = i as usize;
 			let c = storage.containers[idx].read().unwrap();
+			assert_eq!(i, c.id);
 			assert_eq!(1, c.max_time);
 			assert_eq!(1, c.min_time);
 			let ref saved_m = c.values[0];
-			let m = Measurement::new(i as u64, 1, 1.0f64, 1, 1);
+			let m = InternalMeasurement::new(1, 1.0f64, 1, 1);
 			assert_eq!(&m, saved_m);
 		}
 	}
@@ -195,15 +200,16 @@ mod tests {
 		for i in 0..NUMBER_OF_SENSORS{
 			let idx = i as usize;
 			let c = storage.containers[idx].read().unwrap();
+			assert_eq!(i, c.id);
 			assert_eq!(2, c.max_time);
 			assert_eq!(1, c.min_time);
 			
 			let ref saved_m = c.values[1];
-			let m = Measurement::new(i as u64, 2, 1.0f64, 1, 1);
+			let m = InternalMeasurement::new(2, 1.0f64, 1, 1);
 			assert_eq!(&m, saved_m);
 
 			let ref saved_m = c.values[0];
-			let m = Measurement::new(i as u64, 1, 1.0f64, 1, 1);
+			let m = InternalMeasurement::new(1, 1.0f64, 1, 1);
 			assert_eq!(&m, saved_m);
 		}
 	}
@@ -222,10 +228,11 @@ mod tests {
 		for i in 0..NUMBER_OF_SENSORS{
 			let idx = i as usize;
 			let c = storage.containers[idx].read().unwrap();
+			assert_eq!(i, c.id);
 			assert_eq!(NUMBER_OF_MEASUREMENTS, c.max_time);
 			assert_eq!(1, c.min_time);
 			for j in 1..NUMBER_OF_MEASUREMENTS + 1{
-				let m = Measurement::new(i, j, 1.0f64, 1, 1);
+				let m = InternalMeasurement::new(j, 1.0f64, 1, 1);
 				let values_idx = j - 1;
 				let ref saved_m = c.values[values_idx as usize];
 				assert_eq!(&m, saved_m);
@@ -277,13 +284,12 @@ mod tests {
 	#[test]
 	fn read_by_time_interval_test(){
 		const NUMBER_OF_SENSORS: u64 = 1000;
-		const NUMBER_OF_MEASUREMENTS: u64 = 10000;
+		const NUMBER_OF_MEASUREMENTS: u64 = 1000;
 
 		let storage = write_measurements(NUMBER_OF_SENSORS, NUMBER_OF_MEASUREMENTS);
 		for i in 0..NUMBER_OF_SENSORS{
 			let result = storage.read_by_time_interval(i, 0, NUMBER_OF_MEASUREMENTS).unwrap();
 			assert_eq!(NUMBER_OF_MEASUREMENTS as usize, result.len());
-
 			let mut c = 0;
 			for j in 1..NUMBER_OF_MEASUREMENTS + 1{
 				let m = Measurement::new(i, j, 1.0f64, 1, 1);
