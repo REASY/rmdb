@@ -1,3 +1,5 @@
+#![feature(core_intrinsics)]
+
 extern crate num_cpus;
 
 use std::fmt::Debug;
