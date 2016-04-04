@@ -2,7 +2,7 @@ extern crate rmdb;
 extern crate time;
 
 use rmdb::*;
-use rmdb::bplustree::BPlusTree;
+use rmdb::bplustree::*;
 use rmdb::storage::*;
 use rmdb::measurement::*;
 use time::*;
@@ -14,7 +14,31 @@ use std::fmt::Debug	;
 
 
 use std::env;
+
+
 fn main() {
+	split_helper(&mut vec![7, 10, 13], &mut vec![1, 2, 3], &0);
+	println!("");
+	
+	split_helper(&mut vec![7, 10, 13], &mut vec![1, 2, 3], &9);
+	println!("");
+	
+	split_helper(&mut vec![7, 10, 13], &mut vec![1, 2, 3], &12);
+	println!("");
+	
+	split_helper(&mut vec![7, 10, 13], &mut vec![1, 2, 3], &14);
+	println!("");
+
+	split_helper(&mut vec![1, 2, 3, 4, 5, 6], &mut vec![1, 2, 3, 4, 5, 6], &7);
+	println!("");
+
+	split_helper(&mut vec![1, 2, 3, 4, 5, 6], &mut vec![1, 2, 3, 4, 5, 6], &0);
+	println!("");
+
+	split_helper(&mut vec![1, 3, 4, 5, 6, 7], &mut vec![1, 2, 3, 4, 5, 6], &2);
+	println!("");
+
+	return;
 	let mut btree = BPlusTree::<i32, i32>::new(4);
 	btree.insert(4, 1);
 	println!("{:?}", btree);

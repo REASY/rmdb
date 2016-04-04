@@ -5,6 +5,79 @@ use std::sync::Arc;
 use std::rc::Rc;
 use std::fmt::Debug	;
 
+pub fn split_helper<K: Ord + Debug + Clone, V: Clone + Debug>(keys: &mut Vec<K>, values: &mut Vec<V>, k: &K) -> (Vec<K>, Vec<V>, K){
+	let mut fake_index = 0;
+	let mut is_found = false;
+	let mid = ((keys.len()) as f32 / 2 as f32).ceil() as usize;
+	let keys_len = keys.len().clone();
+	let mut mid_element = None;
+	let mut right_keys = Vec::<K>::with_capacity(keys.len());
+	let mut right_values = Vec::<V>::with_capacity(values.len());
+	{
+		let keys_ref: &[K] = keys.as_ref();
+		for j in 0..keys_len{
+			let ref i = keys_ref[j];		
+			if k < i && !is_found{				
+				if mid == fake_index{
+					mid_element = Some((*k).clone());
+				}
+				fake_index += 1;
+				is_found = true;
+			}
+			if fake_index >= mid{
+				right_keys.push((*i).clone());
+				right_values.push((values[j].clone()));
+			}
+			if mid == fake_index{
+				mid_element = Some((*i).clone());
+			}
+			fake_index += 1;
+		}
+		if !is_found{
+			if fake_index >= mid{
+				right_keys.push((*k).clone());
+			}
+		}
+	}
+	
+	let mut fake_index = 0;
+	let mut index = 0;
+	let mut deleted = 0;
+	// println!("Mid: {:?}", mid);
+	for index in 0..keys_len{
+		// println!("{:?}", keys);
+		if deleted == 0 && *k < keys[index]{
+			if fake_index < mid{
+				keys.remove(keys_len - 1);
+				values.remove(keys_len - 1);
+				deleted += 1;
+				// keys.insert(index, (*k).clone());
+			}			
+			fake_index += 1;
+		}
+		if fake_index > mid{
+			if deleted <= mid {
+				let c = keys.len().clone() - 1;
+				keys.remove(c);
+				values.remove(c);
+				deleted += 1;
+			}
+		}
+		fake_index += 1;
+	}
+	if (deleted == 0){
+		let len  = keys.len().clone() - 1;
+		keys.remove(len);
+		values.remove(len);
+	}
+	println!("K: {:?}", k);
+	println!("Left keys: {:?}", keys);
+	println!("Left values: {:?}", values);
+	println!("Right keys: {:?}", right_keys);
+	println!("Right values: {:?}", right_values);
+	return (right_keys, right_values, mid_element.unwrap().clone());
+}
+
 pub fn get_insertion_index<K: Ord + Debug + Clone>(values: &[K], k: &K) -> usize	{
 	let mut index = 0;
 	for v in values{
@@ -103,7 +176,7 @@ impl<K: Ord + Debug + Clone, V: Clone + Debug> Node<K, V> {
 		// The first should hold ceil of (N-1)/2 key values
 		// The second partition can hold rest of the key values
 		let keys_cnt = self.keys_count();
-		let first_hold = ((keys_cnt - 1) as f32 / 2 as f32) as usize;
+		let first_hold = ((keys_cnt - 1) as f32 / 2 as f32).ceil() as usize;
 		println!("first_hold: {:?}. keys: {:?}", first_hold, self.keys);
 		let mut new_leaf = Box::new(Node::<K, V>::new_leaf(self.keys.capacity()));
 		let min_key_in_new_leaf = self.keys[first_hold].clone();
